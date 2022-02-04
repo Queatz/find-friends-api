@@ -3,5 +3,8 @@ package org.morefriends.models
 /**
  * A person attending a meet
  */
-class Attend {
+class Attend : Model() {
+    var key: String? = null
+    var meet: String? = null
+    var skip: Boolean? = null
 }

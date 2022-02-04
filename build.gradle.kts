@@ -30,6 +30,7 @@ dependencies {
     implementation("com.arangodb:arangodb-java-driver:6.16.0")
     implementation("com.arangodb:velocypack:2.5.4")
     implementation("com.arangodb:velocypack-module-jdk8:1.1.1")
+    implementation("com.googlecode.libphonenumber:libphonenumber:8.12.42")
     testImplementation("io.ktor:ktor-server-tests:$ktorVersion")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlinVersion")
 }
