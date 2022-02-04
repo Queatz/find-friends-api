@@ -6,7 +6,7 @@ package org.morefriends.models
 class Quiz : Model() {
     var name: String? = null
     var city: String? = null
-    var geo: Array<String>? = null
+    var geo: Array<Double>? = null
     var contact: String? = null
     var distance: Double? = null
     var personDetails: PersonDetails? = null
@@ -32,7 +32,7 @@ class PersonDetails {
     var gender: String? = null
     var age: String? = null
     var married: String? = null
-    var kids: String? = null
+    var kids: List<String>? = null
     var pets: String? = null
 }
 

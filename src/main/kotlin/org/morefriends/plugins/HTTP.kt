@@ -14,7 +14,10 @@ fun Application.configureHTTP() {
         method(HttpMethod.Patch)
         header(HttpHeaders.Authorization)
         allowCredentials = true
+        allowSameOrigin = true
+        allowNonSimpleContentTypes = true
         host("morefriends.org")
         host("morefriends.us")
+        host("localhost:4200")
     }
 }

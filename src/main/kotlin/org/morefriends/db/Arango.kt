@@ -3,6 +3,9 @@ package org.morefriends.db
 import com.arangodb.ArangoDB
 import com.arangodb.ArangoDBException
 import com.arangodb.ArangoDatabase
+import com.arangodb.DbName
+import com.arangodb.model.DocumentCreateOptions
+import com.arangodb.model.DocumentUpdateOptions
 import com.arangodb.velocypack.module.jdk8.VPackJdk8Module
 import org.morefriends.models.*
 import java.time.Instant
@@ -14,25 +17,25 @@ class Arango {
         .password("friends")
         .registerModule(VPackJdk8Module())
         .build()
-        .db()
+        .db(DbName.of("friends"))
         .setup()
 
     private fun <T : Model> one(klass: KClass<T>, query: String, parameters: Map<String, String> = mapOf()) =
         db.query(
             query,
-            mutableMapOf("collection" to klass.dbCollection()) + parameters,
+            mutableMapOf("@collection" to klass.dbCollection()) + parameters,
             klass.java
         ).stream().findFirst().takeIf { it.isPresent }?.get()
 
     private fun <T : Model> list(klass: KClass<T>, query: String, parameters: Map<String, String> = mapOf()) =
         db.query(
             query,
-            mutableMapOf("collection" to klass.dbCollection()) + parameters,
+            mutableMapOf("@collection" to klass.dbCollection()) + parameters,
             klass.java
         ).asListRemaining().toList()
 
-    fun insert(model: Model) = db.collection(model::class.dbCollection()).insertDocument(model.apply { createdAt = Instant.now() })!!
-    fun update(model: Model) = db.collection(model::class.dbCollection()).updateDocument(model.id?.asKey(), model)!!
+    fun insert(model: Model) = db.collection(model::class.dbCollection()).insertDocument(model.apply { createdAt = Instant.now() }, DocumentCreateOptions().returnNew(true))!!.new
+    fun update(model: Model) = db.collection(model::class.dbCollection()).updateDocument(model.id?.asKey(), model, DocumentUpdateOptions().returnNew(true))!!.new
 
     fun <T : Model> document(klass: KClass<T>, id: String) = try {
         db.collection(klass.dbCollection()).getDocument(id.asKey(), klass.java)

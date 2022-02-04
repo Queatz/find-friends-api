@@ -58,13 +58,13 @@ fun Application.configureRouting() {
 
                             when {
                                 it.contact.isPhoneNumber() -> {
-                                    sendSms.send(it.contact, text)
-                                    codes[it.contact] = Dated(code)
+                                    sendSms.send(it.contact.normalizeContact(), text)
+                                    codes[it.contact.normalizeContact()] = Dated(code)
                                     SuccessApiResponse()
                                 }
                                 it.contact.isEmailAddress() -> {
-                                    sendEmail.send(it.contact, text)
-                                    codes[it.contact] = Dated(code)
+                                    sendEmail.send(it.contact.normalizeContact(), text)
+                                    codes[it.contact.normalizeContact()] = Dated(code)
                                     SuccessApiResponse()
                                 }
                                 else -> HttpStatusCode.BadRequest.description("Contact must be a phone number or email address")
@@ -82,10 +82,10 @@ fun Application.configureRouting() {
                     when {
                         it.contact.isNotEmpty() && it.code.isNotEmpty() -> {
                             when (it.code) {
-                                codes[it.contact]?.value -> {
-                                    codes.remove(it.contact)
+                                codes[it.contact.normalizeContact()]?.value -> {
+                                    codes.remove(it.contact.normalizeContact())
 
-                                    when (val quiz = db.quiz(contact = it.contact)) {
+                                    when (val quiz = db.quiz(contact = it.contact.normalizeContact())) {
                                         null -> HttpStatusCode.NotFound
                                         else -> {
                                             val token = (0..31).token()
@@ -315,17 +315,20 @@ private fun Quiz.firstError() = when {
     contact?.isPhoneNumber() != true && contact?.isEmailAddress() != true -> HttpStatusCode.BadRequest.description(
         "Contact should be an email address or phone number"
     )
-    city?.isBlank() != true -> HttpStatusCode.BadRequest.description("City or town should not be blank")
-    geo?.isEmpty() != true -> HttpStatusCode.BadRequest.description("Geo coordinates should not be blank")
+    city?.isNotBlank() != true -> HttpStatusCode.BadRequest.description("City or town should not be blank")
+    geo?.isNotEmpty() != true -> HttpStatusCode.BadRequest.description("Geo coordinates should not be blank")
     distance?.takeIf { it > 0 } == null -> HttpStatusCode.BadRequest.description("Distance should be 0 or greater")
     else -> null
 }
 
 private fun Quiz.sanitize() {
-    contact = when {
-        contact?.isPhoneNumber() == true -> contact?.normalizePhoneNumber()
-        else -> contact?.trim()
-    }
+    contact = contact?.normalizeContact()
     name = name?.trim()
     city = city?.trim()
 }
+
+private fun String.normalizeContact() = when {
+    isPhoneNumber() -> normalizePhoneNumber()
+    else -> trim()
+}
+
