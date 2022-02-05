@@ -34,6 +34,13 @@ class Arango {
             klass.java
         ).asListRemaining().toList()
 
+    private fun <T : Any> result(klass: KClass<T>, query: String, parameters: Map<String, String> = mapOf()) =
+        db.query(
+            query,
+            parameters,
+            klass.java
+        ).asListRemaining().toList()
+
     fun insert(model: Model) = db.collection(model::class.dbCollection()).insertDocument(model.apply { createdAt = Instant.now() }, DocumentCreateOptions().returnNew(true))!!.new
     fun update(model: Model) = db.collection(model::class.dbCollection()).updateDocument(model.id?.asKey(), model, DocumentUpdateOptions().returnNew(true))!!.new
 
@@ -109,6 +116,13 @@ class Arango {
             "meet" to meet,
             "place" to place
         )
+    )
+
+    fun groups() = result(
+        GroupResult::class,
+        """
+            for quiz in `quiz` return quiz
+        """
     )
 }
 

@@ -8,21 +8,20 @@ import io.ktor.server.routing.*
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.morefriends.*
 import org.morefriends.api.*
 import org.morefriends.db.Arango
-import org.morefriends.isEmailAddress
-import org.morefriends.isPhoneNumber
 import org.morefriends.models.Feedback
 import org.morefriends.models.Idea
 import org.morefriends.models.Problem
 import org.morefriends.models.Quiz
-import org.morefriends.normalizePhoneNumber
 import org.morefriends.services.SendEmail
 import org.morefriends.services.SendSms
-import org.morefriends.token
 import java.time.Instant
+import java.util.logging.Logger
 import kotlin.random.Random.Default.nextInt
 import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
 
 data class Dated<T>(
     val value: T,
@@ -39,10 +38,29 @@ val sendSms = SendSms()
 @OptIn(DelicateCoroutinesApi::class)
 fun Application.configureRouting() {
     launch {
-        // todo: sweep tokens
-        // todo: sweep codes
-        // todo: schedule meets
-        delay(1.hours.inWholeMilliseconds)
+        while (true) {
+            // todo: sweep tokens
+            // todo: sweep codes
+            // todo: schedule meets
+            delay(1.hours.inWholeMilliseconds)
+        }
+    }
+
+    launch {
+        // todo delay until Wednesday 10am CST
+        delay(1.minutes.inWholeMilliseconds)
+
+        while (true) {
+            Logger.getGlobal().info("Forming groups for ${Instant.now()}")
+            formGroups().forEach {
+                Logger.getGlobal().info("Group of ${it.size} formed.")
+
+                // todo: create attend
+                // todo: send messages
+            }
+
+            delay(1.minutes.inWholeMilliseconds) // 7.days.inWholeMilliseconds
+        }
     }
 
     routing {
@@ -86,7 +104,7 @@ fun Application.configureRouting() {
                                     codes.remove(it.contact.normalizeContact())
 
                                     when (val quiz = db.quiz(contact = it.contact.normalizeContact())) {
-                                        null -> HttpStatusCode.NotFound
+                                        null -> HttpStatusCode.NotFound.description("A quiz with the provided contact method does not exist")
                                         else -> {
                                             val token = (0..31).token()
                                             tokens[token] = Dated(quiz.id!!)
@@ -97,7 +115,7 @@ fun Application.configureRouting() {
                                         }
                                     }
                                 }
-                                else -> HttpStatusCode.NotFound
+                                else -> HttpStatusCode.NotFound.description("The code is not valid")
                             }
                         }
                         else -> HttpStatusCode.BadRequest

@@ -17,6 +17,7 @@ class Quiz : Model() {
     var meetPreferences: Map<String, Choice>? = null
     var meetPlaces: Map<String, Choice>? = null
     var legal: Legal? = null
+    var paused: Boolean? = null
 }
 
 class FriendDetails {
