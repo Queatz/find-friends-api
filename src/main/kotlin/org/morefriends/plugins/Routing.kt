@@ -168,6 +168,8 @@ fun Application.configureRouting() {
                     when (existingQuiz) {
                         null -> HttpStatusCode.NotFound
                         else -> {
+                            // todo Remove all confirms, votes
+
                             db.delete(existingQuiz)
 
                             SuccessApiResponse()
@@ -326,15 +328,18 @@ fun Application.configureRouting() {
 
         post("/meet/{id}/message") {
             call.receive<MeetMessagePostBody>().also {
-                // todo ensure meet key is supplied as well and matches the meet
-                val attend = db.attend(key = call.parameters["key"]!!)
+                val meet = db.document(Meet::class, call.parameters["id"]!!)
+                val attend = db.attend(it.key)
 
                 call.respond(
-                    when (attend) {
-                        null -> HttpStatusCode.NotFound
+                    when {
+                        meet == null -> HttpStatusCode.NotFound
+                        attend == null -> HttpStatusCode.NotFound
+                        attend.group != meet.group -> HttpStatusCode.NotFound
                         else -> {
                             // todo: send message to people scheduled for my same meet location
                             // todo: it.message
+                            Logger.getGlobal().info("Sending message: ${it.message}")
                             SuccessApiResponse()
                         }
                     }
