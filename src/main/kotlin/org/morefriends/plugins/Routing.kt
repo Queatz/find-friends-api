@@ -214,7 +214,11 @@ fun Application.configureRouting() {
                         else -> {
                             db.vote(attend.id!!, attend.group!!, it.place)
 
-                            attend.response()
+                            attend.response().also { x ->
+                                x.places.firstOrNull { it.votes == x.attendees }?.let {
+                                    createMeet(it.place!!)
+                                }
+                            }
                         }
                     }
                 )
@@ -323,6 +327,7 @@ fun Application.configureRouting() {
 
 private fun Attend.response() = AttendApiResponse(
     this,
+    db.document(Quiz::class, quiz!!)?.name,
     db.attendees(group!!),
     db.places(group!!, id!!)
 )

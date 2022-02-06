@@ -1,8 +1,6 @@
 package org.morefriends
 
-import org.morefriends.models.Attend
-import org.morefriends.models.Group
-import org.morefriends.models.Quiz
+import org.morefriends.models.*
 import org.morefriends.plugins.db
 
 fun createGroup(quizzes: Collection<Quiz>) {
@@ -20,4 +18,17 @@ fun createGroup(quizzes: Collection<Quiz>) {
         // todo send SMS + Email
         // todo " We've grouped you with 4 people that are potentially great friends for you. "
     }
+}
+
+fun createMeet(place: Place) {
+    val meet = Meet().apply {
+        this.place = place.id
+        this.group = place.group
+    }
+
+    // todo ensure meet does not already exist
+
+    db.insert(meet)
+
+    // todo send SMS + Email
 }
