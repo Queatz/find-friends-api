@@ -215,6 +215,8 @@ fun Application.configureRouting() {
                             db.vote(attend.id!!, attend.group!!, it.place)
 
                             attend.response().also { x ->
+                                // todo schedule meets after 30 minutes
+                                // todo schedule meets when 50% of unconfirmed people vote for 1 place
                                 x.places.firstOrNull { it.votes == x.attendees }?.let {
                                     createMeet(it.place!!)
                                 }
@@ -257,7 +259,23 @@ fun Application.configureRouting() {
                         // todo: remove any confirms, votes
                         // todo: alert any people going to the same meet that this person is not
 
-                        SuccessApiResponse()
+                        attend.response()
+                    }
+                }
+            )
+        }
+
+        post("/attend/{key}/unskip") {
+            val attend = db.attend(key = call.parameters["key"]!!)
+
+            call.respond(
+                when (attend) {
+                    null -> HttpStatusCode.NotFound
+                    else -> {
+                        attend.skip = false
+                        db.update(attend)
+
+                        attend.response()
                     }
                 }
             )

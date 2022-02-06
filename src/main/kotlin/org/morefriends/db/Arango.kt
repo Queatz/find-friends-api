@@ -173,7 +173,7 @@ class Arango {
                     ),
                     attendees: count(
                         for confirm in ${ DbCollection.Confirm.dbCollection() }
-                            filter confirm.meet == meet._id
+                            filter confirm.meet == meet._id and confirm.response == true
                             return confirm
                     )
                 }
