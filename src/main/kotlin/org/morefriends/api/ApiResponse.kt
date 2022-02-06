@@ -16,6 +16,7 @@ data class GetQuizApiResponse (
 data class AttendApiResponse (
     val attend: Attend? = null,
     val name: String? = null,
+    val geo: List<Double>? = null,
     val attendees: Int? = null,
     val places: List<PlaceWithVotes>,
     val meets: List<MeetWithAttendance>,

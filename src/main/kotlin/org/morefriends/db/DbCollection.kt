@@ -32,4 +32,4 @@ enum class DbCollection(
     Problem(ProblemModel::class),
     Quiz(QuizModel::class),
     Vote(VoteModel::class),
-}
+  }

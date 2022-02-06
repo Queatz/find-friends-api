@@ -78,7 +78,10 @@ fun Application.configureRouting() {
                             val code = nextInt(100000, 999999).toString()
                             val text = "Your morefriends.org code is: $code"
 
+                            val quiz = db.quiz(it.contact.normalizeContact())
+
                             when {
+                                quiz == null -> HttpStatusCode.NotFound.description("A quiz for that contact was not found")
                                 it.contact.isPhoneNumber() -> {
                                     sendSms.send(it.contact.normalizeContact(), text)
                                     codes[it.contact.normalizeContact()] = Dated(code)
@@ -150,6 +153,25 @@ fun Application.configureRouting() {
                     when (existingQuiz) {
                         null -> HttpStatusCode.NotFound
                         else -> call.respond(it.quiz.firstError() ?: db.update(it.quiz))
+                    }
+                )
+            }
+        }
+
+        post("/quiz/{id}/delete") {
+            call.receive<DeleteQuizPostBody>().also {
+                val existingQuiz = tokens[it.token]?.let {
+                    db.document(Quiz::class, it.value)
+                }
+
+                call.respond(
+                    when (existingQuiz) {
+                        null -> HttpStatusCode.NotFound
+                        else -> {
+                            db.delete(existingQuiz)
+
+                            SuccessApiResponse()
+                        }
                     }
                 )
             }
@@ -347,6 +369,7 @@ fun Application.configureRouting() {
 private fun Attend.response() = AttendApiResponse(
     this,
     db.document(Quiz::class, quiz!!)?.name,
+    db.document(Group::class, group!!)?.geo,
     db.attendees(group!!),
     db.places(group!!, id!!),
     db.meets(group!!, id!!)

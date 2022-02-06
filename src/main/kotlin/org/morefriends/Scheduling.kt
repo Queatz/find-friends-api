@@ -4,7 +4,12 @@ import org.morefriends.models.*
 import org.morefriends.plugins.db
 
 fun createGroup(quizzes: Collection<Quiz>) {
-    val group = db.insert(Group())
+    val group = db.insert(Group().apply {
+        geo = listOf(
+            quizzes.map { it.geo!![0] }.average(),
+            quizzes.map { it.geo!![1] }.average()
+        )
+    })
 
     quizzes.map {
         val attend = Attend().apply {

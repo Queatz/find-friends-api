@@ -46,6 +46,7 @@ class Arango {
 
     fun insert(model: Model) = db.collection(model::class.dbCollection()).insertDocument(model.apply { createdAt = Instant.now() }, DocumentCreateOptions().returnNew(true))!!.new
     fun update(model: Model) = db.collection(model::class.dbCollection()).updateDocument(model.id?.asKey(), model, DocumentUpdateOptions().returnNew(true))!!.new
+    fun delete(model: Model) = db.collection(model::class.dbCollection()).deleteDocument(model.id?.asKey())
 
     fun <T : Model> document(klass: KClass<T>, id: String) = try {
         db.collection(klass.dbCollection()).getDocument(id.asKey(), klass.java)
@@ -88,6 +89,12 @@ class Arango {
         PlaceWithVotes::class, """
             for place in ${ DbCollection.Place.dbCollection() }
                 filter place.group == @group
+                let votes = count(
+                        for vote in ${ DbCollection.Vote.dbCollection() }
+                            filter vote.place == place._id
+                            return vote
+                    )
+                sort votes desc, date_timestamp(place.createdAt) asc
                 return {
                     place: place,
                     voted: count(
@@ -95,11 +102,7 @@ class Arango {
                             filter vote.place == place._id and vote.attend == @attend
                             return vote
                     ) == 1,
-                    votes: count(
-                        for vote in ${ DbCollection.Vote.dbCollection() }
-                            filter vote.place == place._id
-                            return vote
-                    )
+                    votes: votes
                 }
         """, mapOf(
             "group" to group,
@@ -163,6 +166,7 @@ class Arango {
         MeetWithAttendance::class, """
             for meet in ${ DbCollection.Meet.dbCollection() }
                 filter meet.group == @group
+                sort date_timestamp(meet.createdAt) asc
                 return {
                     meet: meet,
                     place: document(meet.place),

@@ -71,7 +71,7 @@ internal fun Quiz.hasPotential(other: Quiz): Boolean {
 
     val similarity = similar.count { it }.toDouble() / similar.size.toDouble()
 
-    Logger.getGlobal().info("$name + ${other.name} = ${similarity * 100} > ${minimumSimilarity!!}")
+    Logger.getGlobal().info("$name + ${other.name} = ${(similarity * 100).toInt()} > ${minimumSimilarity!!}")
 
     return similarity * 100 >= minimumSimilarity!!
 }

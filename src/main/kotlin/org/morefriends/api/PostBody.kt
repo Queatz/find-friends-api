@@ -21,6 +21,10 @@ data class QuizUpdatePostBody (
     val quiz: Quiz
 )
 
+data class DeleteQuizPostBody (
+    val token: String
+)
+
 data class IdeaPostBody (
     val idea: String
 )
