@@ -34,7 +34,8 @@ data class VotePostBody (
 )
 
 data class ConfirmPostBody (
-    val meet: String
+    val meet: String,
+    val response: Boolean
 )
 
 data class MeetProblemPostBody (

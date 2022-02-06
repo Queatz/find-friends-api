@@ -23,21 +23,21 @@ class Arango {
         .db(DbName.of("friends"))
         .setup()
 
-    private fun <T : Model> one(klass: KClass<T>, query: String, parameters: Map<String, String> = mapOf()) =
+    private fun <T : Model> one(klass: KClass<T>, query: String, parameters: Map<String, Any> = mapOf()) =
         db.query(
             query,
             mutableMapOf("@collection" to klass.dbCollection()) + parameters,
             klass.java
         ).stream().findFirst().takeIf { it.isPresent }?.get()
 
-    private fun <T : Model> list(klass: KClass<T>, query: String, parameters: Map<String, String> = mapOf()) =
+    private fun <T : Model> list(klass: KClass<T>, query: String, parameters: Map<String, Any> = mapOf()) =
         db.query(
             query,
             mutableMapOf("@collection" to klass.dbCollection()) + parameters,
             klass.java
         ).asListRemaining().toList()
 
-    private fun <T : Any> query(klass: KClass<T>, query: String, parameters: Map<String, String> = mapOf()) =
+    private fun <T : Any> query(klass: KClass<T>, query: String, parameters: Map<String, Any> = mapOf()) =
         db.query(
             query,
             parameters,
@@ -121,16 +121,17 @@ class Arango {
         )
     )
 
-    fun confirm(attend: String, meet: String) = one(
+    fun confirm(attend: String, meet: String, response: Boolean) = one(
         Confirm::class, """
-            upsert { attend: @attend }
-                insert { attend: @attend, meet: @meet, createdAt: date_iso8601(date_now()) }
-                update { meet: @meet }
+            upsert { attend: @attend, meet: @meet }
+                insert { attend: @attend, meet: @meet, response: @response , createdAt: date_iso8601(date_now()) }
+                update { response: @response }
                 in @@collection
                 return NEW
         """, mapOf(
             "attend" to attend,
-            "meet" to meet
+            "meet" to meet,
+            "response" to response
         )
     )
 
@@ -157,6 +158,30 @@ class Arango {
         "group" to group
     )
     ).firstOrNull() ?: 0
+
+    fun meets(group: String, attend: String) = query(
+        MeetWithAttendance::class, """
+            for meet in ${ DbCollection.Meet.dbCollection() }
+                filter meet.group == @group
+                return {
+                    meet: meet,
+                    place: document(meet.place),
+                    confirm: first(
+                        for confirm in ${ DbCollection.Confirm.dbCollection() }
+                            filter confirm.meet == meet._id and confirm.attend == @attend
+                            return confirm
+                    ),
+                    attendees: count(
+                        for confirm in ${ DbCollection.Confirm.dbCollection() }
+                            filter confirm.meet == meet._id
+                            return confirm
+                    )
+                }
+        """, mapOf(
+            "group" to group,
+            "attend" to attend,
+        )
+    )
 }
 
 private fun ArangoDatabase.setup() = apply {

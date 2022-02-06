@@ -233,7 +233,7 @@ fun Application.configureRouting() {
                     when (attend) {
                         null -> HttpStatusCode.NotFound
                         else -> {
-                            db.confirm(attend.id!!, it.meet)
+                            db.confirm(attend.id!!, it.meet, it.response)
 
                             // todo, probably something happens here
 
@@ -254,7 +254,8 @@ fun Application.configureRouting() {
                         attend.skip = true
                         db.update(attend)
 
-                        // todo, alert any people going to the same meet that this person is not
+                        // todo: remove any confirms, votes
+                        // todo: alert any people going to the same meet that this person is not
 
                         SuccessApiResponse()
                     }
@@ -329,7 +330,8 @@ private fun Attend.response() = AttendApiResponse(
     this,
     db.document(Quiz::class, quiz!!)?.name,
     db.attendees(group!!),
-    db.places(group!!, id!!)
+    db.places(group!!, id!!),
+    db.meets(group!!, id!!)
 )
 
 private fun Quiz.firstError() = when {
