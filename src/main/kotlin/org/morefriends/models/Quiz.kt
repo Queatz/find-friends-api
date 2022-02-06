@@ -6,7 +6,7 @@ package org.morefriends.models
 class Quiz : Model() {
     var name: String? = null
     var city: String? = null
-    var geo: Array<Double>? = null
+    var geo: List<Double>? = null
     var contact: String? = null
     var distance: Double? = null
     var personDetails: PersonDetails? = null

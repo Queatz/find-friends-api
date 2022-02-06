@@ -1,9 +1,14 @@
 package org.morefriends.models
 
+import java.time.Instant
+
 /**
- * A place suggested in a meet
+ * A place suggested in a group
  */
 class Place : Model() {
-    var meet: String? = null
-    var attendees: Int? = null
+    var group: String? = null
+    var name: String? = null
+    var address: String? = null
+    var date: Instant? = null
+    var geo: List<Double>? = null
 }

@@ -1,30 +1,39 @@
 package org.morefriends
 
+import org.morefriends.db.QuizWithMet
 import org.morefriends.models.Quiz
 import org.morefriends.plugins.db
+import java.util.logging.Logger
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
 
-fun formGroups(): List<Set<Quiz>> {
+fun formGroups(): List<List<Quiz>> {
     val quizzes = db.activeQuizzes()
 
     // Find potential groups, sorted from largest to smallest
     val groups = quizzes.map { quiz ->
-        val group = (quizzes.filter { it != quiz && quiz.hasPotential(it) } + quiz).toMutableSet()
+        val group = quizzes.filter {
+            it == quiz ||
+                    !quiz.met!!.contains(it.quiz!!.id!!) &&
+                    quiz.quiz!!.hasPotential(it.quiz!!) &&
+                    it.quiz!!.hasPotential(quiz.quiz!!)
+        }.toMutableSet()
+
+        // todo: need to match every person to ever other person as well
 
         group
     }.filter { it.size >= 2 }.sortedByDescending { it.size }
 
-    val alreadyGrouped = mutableSetOf<Quiz>()
+    val alreadyGrouped = mutableSetOf<QuizWithMet>()
 
     // Put people in the largest group for them, and remove them from all other groups
     return groups.onEach {
         it.removeAll(alreadyGrouped)
         alreadyGrouped.addAll(it)
-    }.filter { it.size >= 2 }
+    }.filter { it.size >= 2 }.map { it.map { it.quiz!! } }
 }
 
 internal fun Quiz.hasPotential(other: Quiz): Boolean {
@@ -50,8 +59,7 @@ internal fun Quiz.hasPotential(other: Quiz): Boolean {
     ) return false
 
     // Check similarity
-    val similar =
-        friendFacts!!.entries.map { other.friendFacts?.get(it.key)?.choice == it.value.choice } +
+    val similar = friendFacts!!.entries.map { other.friendFacts?.get(it.key)?.choice == it.value.choice } +
                 friendScenarios!!.entries.map { other.friendScenarios?.get(it.key)?.choice == it.value.choice } +
                 meetPreferences!!.entries.map { other.meetPreferences?.get(it.key)?.choice == it.value.choice } +
                 meetPlaces!!.entries.map { other.meetPlaces?.get(it.key)?.choice == it.value.choice } +
@@ -61,8 +69,9 @@ internal fun Quiz.hasPotential(other: Quiz): Boolean {
                 friendDetails!!.kids!!.emptyOrHasAny(other.personDetails!!.kids!!) +
                 friendDetails!!.pets!!.emptyOrHas(other.personDetails!!.pets)
 
-
     val similarity = similar.count { it }.toDouble() / similar.size.toDouble()
+
+    Logger.getGlobal().info("$name + ${other.name} = ${similarity * 100} > ${minimumSimilarity!!}")
 
     return similarity * 100 >= minimumSimilarity!!
 }

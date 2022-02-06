@@ -11,10 +11,7 @@ import kotlinx.coroutines.launch
 import org.morefriends.*
 import org.morefriends.api.*
 import org.morefriends.db.Arango
-import org.morefriends.models.Feedback
-import org.morefriends.models.Idea
-import org.morefriends.models.Problem
-import org.morefriends.models.Quiz
+import org.morefriends.models.*
 import org.morefriends.services.SendEmail
 import org.morefriends.services.SendSms
 import java.time.Instant
@@ -48,18 +45,25 @@ fun Application.configureRouting() {
 
     launch {
         // todo delay until Wednesday 10am CST
-        delay(1.minutes.inWholeMilliseconds)
+//        delay(1.minutes.inWholeMilliseconds)
 
         while (true) {
             Logger.getGlobal().info("Forming groups for ${Instant.now()}")
             formGroups().forEach {
-                Logger.getGlobal().info("Group of ${it.size} formed.")
+                Logger.getGlobal().info("Group of ${it.size} (${it.map { it.name }.joinToString(" + ")}) formed.")
 
-                // todo: create attend
-                // todo: send messages
+                it.forEach { quiz ->
+                    it.forEach { other ->
+                        if (quiz != other) {
+                            db.met(quiz.id!!, other.id!!)
+                        }
+                    }
+                }
+
+                createGroup(it)
             }
 
-            delay(1.minutes.inWholeMilliseconds) // 7.days.inWholeMilliseconds
+            delay(1.minutes.inWholeMilliseconds) // delay until Wednesday 10am CST
         }
     }
 
@@ -132,7 +136,7 @@ fun Application.configureRouting() {
             }
         }
 
-        post("/quiz/{key}") {
+        post("/quiz/{id}") {
             call.receive<QuizUpdatePostBody>().also {
                 it.quiz.sanitize()
 
@@ -165,93 +169,78 @@ fun Application.configureRouting() {
             }
         }
 
-        get("/meet/{key}") {
-            val meet = db.meet(key = call.parameters["key"]!!)
+        get("/attend/{key}") {
+            val attend = db.attend(key = call.parameters["key"]!!)
 
             call.respond(
-                when (meet) {
+                when (attend) {
                     null -> HttpStatusCode.NotFound
-                    else -> MeetAttendanceApiResponse(
-                        meet,
-                        db.places(meet = meet.id!!),
-                        db.attend(key = call.parameters["key"]!!)
-                    )
+                    else -> attend.response()
                 }
             )
         }
 
-        post("/meet/{key}/places") {
+        post("/attend/{key}/places") {
             call.receive<MeetPlacesPostBody>().also {
-                val meet = db.meet(key = call.parameters["key"]!!)
+                val attend = db.attend(key = call.parameters["key"]!!)
 
                 call.respond(
-                    when (meet) {
+                    when (attend) {
                         null -> HttpStatusCode.NotFound
                         else -> {
-                            it.place.meet = meet.id
+                            val group = db.document(Group::class, attend.group!!)
 
-                            db.insert(it.place)
+                            if (group == null) HttpStatusCode.NotFound else {
+                                it.place.group = attend.group
 
-                            // todo: automatically vote for this place
+                                val place = db.insert(it.place)
+                                db.vote(attend.id!!, group.id!!, place.id!!)
 
-                            MeetAttendanceApiResponse(
-                                meet,
-                                db.places(meet = meet.id!!),
-                                db.attend(key = call.parameters["key"]!!)
-                            )
+                                attend.response()
+                            }
                         }
                     }
                 )
             }
         }
 
-        post("/meet/{key}/vote") {
-            val meet = db.meet(key = call.parameters["key"]!!)
+        post("/attend/{key}/vote") {
             val attend = db.attend(key = call.parameters["key"]!!)
 
             call.receive<VotePostBody>().also {
                 call.respond(
-                    when {
-                        meet == null -> HttpStatusCode.NotFound
-                        attend == null -> HttpStatusCode.NotFound
+                    when (attend) {
+                        null -> HttpStatusCode.NotFound
                         else -> {
-                            db.vote(attend.id!!, meet.id!!, it.place)
+                            db.vote(attend.id!!, attend.group!!, it.place)
 
-                            MeetAttendanceApiResponse(
-                                meet,
-                                db.places(meet = meet.id!!),
-                                db.attend(key = call.parameters["key"]!!)
-                            )
+                            attend.response()
                         }
                     }
                 )
             }
         }
 
-        post("/meet/{key}/confirm") {
-            val meet = db.meet(key = call.parameters["key"]!!)
+        post("/attend/{key}/confirm") {
             val attend = db.attend(key = call.parameters["key"]!!)
 
             call.receive<ConfirmPostBody>().also {
                 call.respond(
-                    when {
-                        meet == null -> HttpStatusCode.NotFound
-                        attend == null -> HttpStatusCode.NotFound
+                    when (attend) {
+                        null -> HttpStatusCode.NotFound
                         else -> {
-                            db.confirm(attend.id!!, meet.id!!, it.place)
+                            db.confirm(attend.id!!, it.meet)
 
-                            MeetAttendanceApiResponse(
-                                meet,
-                                db.places(meet = meet.id!!),
-                                db.attend(key = call.parameters["key"]!!)
-                            )
+                            // todo, probably something happens here
+
+                            attend.response()
                         }
                     }
                 )
             }
         }
 
-        post("/meet/{key}/skip") {
+        post("/attend/{key}/skip") {
             val attend = db.attend(key = call.parameters["key"]!!)
 
             call.respond(
@@ -259,8 +248,9 @@ fun Application.configureRouting() {
                     null -> HttpStatusCode.NotFound
                     else -> {
                         attend.skip = true
-
                         db.update(attend)
+
+                        // todo, alert any people going to the same meet that this person is not
 
                         SuccessApiResponse()
                     }
@@ -268,12 +258,34 @@ fun Application.configureRouting() {
             )
         }
 
-        post("/meet/{key}/message") {
-            call.receive<MeetMessagePostBody>().also {
-                val meet = db.meet(key = call.parameters["key"]!!)
+        post("/attend/{key}/problem") {
+            call.receive<MeetProblemPostBody>().also {
+                val attend = db.attend(key = call.parameters["key"]!!)
 
                 call.respond(
-                    when (meet) {
+                    when {
+                        attend == null -> HttpStatusCode.NotFound
+                        it.problem.isBlank() -> HttpStatusCode.BadRequest.description("Missing problem")
+                        else -> {
+                            db.insert(Problem().apply {
+                                this.meet = attend.id
+                                problem = it.problem
+                            })
+
+                            SuccessApiResponse()
+                        }
+                    }
+                )
+            }
+        }
+
+        post("/meet/{id}/message") {
+            call.receive<MeetMessagePostBody>().also {
+                // todo ensure meet key is supplied as well and matches the meet
+                val attend = db.attend(key = call.parameters["key"]!!)
+
+                call.respond(
+                    when (attend) {
                         null -> HttpStatusCode.NotFound
                         else -> {
                             // todo: send message to people scheduled for my same meet location
@@ -285,29 +297,10 @@ fun Application.configureRouting() {
             }
         }
 
-        post("/meet/{key}/problem") {
-            call.receive<MeetProblemPostBody>().also {
-                val meet = db.meet(key = call.parameters["key"]!!)
-
-                call.respond(
-                    when {
-                        meet == null -> HttpStatusCode.NotFound
-                        it.problem.isBlank() -> HttpStatusCode.BadRequest.description("Missing problem")
-                        else -> {
-                            db.insert(Problem().apply {
-                                this.meet = meet.id
-                                problem = it.problem
-                            })
-                            SuccessApiResponse()
-                        }
-                    }
-                )
-            }
-        }
-
-        post("/meet/{key}/feedback") {
+        post("/meet/{id}/feedback") {
             call.receive<MeetFeedbackPostBody>().also {
-                val meet = db.meet(key = call.parameters["key"]!!)
+                // todo ensure meet key is supplied as well and matches the meet
+                val meet = db.document(Meet::class, call.parameters["id"]!!)
 
                 call.respond(
                     when {
@@ -318,6 +311,7 @@ fun Application.configureRouting() {
                                 this.meet = meet.id
                                 feedback = it.feedback
                             })
+
                             SuccessApiResponse()
                         }
                     }
@@ -326,6 +320,12 @@ fun Application.configureRouting() {
         }
     }
 }
+
+private fun Attend.response() = AttendApiResponse(
+    this,
+    db.attendees(group!!),
+    db.places(group!!, id!!)
+)
 
 private fun Quiz.firstError() = when {
     legal?.tos != true -> HttpStatusCode.BadRequest.description("Terms of Service must be accepted")

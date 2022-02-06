@@ -5,6 +5,7 @@ package org.morefriends.models
  */
 class Attend : Model() {
     var key: String? = null
-    var meet: String? = null
+    var group: String? = null
+    var quiz: String? = null
     var skip: Boolean? = null
 }

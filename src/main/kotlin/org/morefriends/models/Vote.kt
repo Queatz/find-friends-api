@@ -1,7 +1,7 @@
 package org.morefriends.models
 
 class Vote : Model() {
-    val meet: String? = null
-    val place: String? = null
+    val group: String? = null
     val attend: String? = null
+    val place: String? = null
 }

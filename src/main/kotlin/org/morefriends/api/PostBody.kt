@@ -34,17 +34,19 @@ data class VotePostBody (
 )
 
 data class ConfirmPostBody (
-    val place: String
-)
-
-data class MeetMessagePostBody (
-    val message: String
+    val meet: String
 )
 
 data class MeetProblemPostBody (
     val problem: String
 )
 
+data class MeetMessagePostBody (
+    val key: String,
+    val message: String
+)
+
 data class MeetFeedbackPostBody (
+    val key: String,
     val feedback: String
 )

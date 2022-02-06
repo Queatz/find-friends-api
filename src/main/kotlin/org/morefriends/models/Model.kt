@@ -10,3 +10,13 @@ open class Model {
     var id: String? = null
     var createdAt: Instant? = null
 }
+
+open class Edge : Model() {
+    @DocumentField(DocumentField.Type.FROM)
+    @SerializedName(value = "from", alternate = ["_from"])
+    var from: String? = null
+
+    @DocumentField(DocumentField.Type.TO)
+    @SerializedName(value = "to", alternate = ["_to"])
+    var to: String? = null
+}
