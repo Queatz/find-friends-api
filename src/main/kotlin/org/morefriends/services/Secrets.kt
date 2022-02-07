@@ -13,12 +13,19 @@ class Secrets {
 
 data class SecretsConfig(
     val twilio: TwilioSecretsConfig,
-    val email: EmailSecretsConfig
+    val email: EmailSecretsConfig,
+    val ssl: SslSecretsConfig?
 )
 
 data class EmailSecretsConfig(
     val from: String,
     val password: String,
+)
+data class SslSecretsConfig(
+    val keyStorePath: String,
+    val keyAlias: String,
+    val keyStorePassword: String,
+    val privateKeyPassword: String,
 )
 
 data class TwilioSecretsConfig(
