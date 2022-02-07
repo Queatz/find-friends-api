@@ -93,6 +93,6 @@ fun Application.initialize() {
     }
 }
 
-private suspend fun CoroutineScope.delayUntilNext(unit: TemporalUnit, count: Long) {
+private suspend fun delayUntilNext(unit: TemporalUnit, count: Long) {
     delay((Instant.now().truncatedTo(unit).plusSeconds(count).toEpochMilli() - Instant.now().toEpochMilli()).coerceAtLeast(0))
 }

@@ -12,6 +12,7 @@ import org.morefriends.models.Vote as VoteModel
 import org.morefriends.models.Confirm as ConfirmModel
 import org.morefriends.models.Group as GroupModel
 import org.morefriends.models.Met as MetModel
+import org.morefriends.models.Error as ErrorModel
 import org.morefriends.models.Model
 import kotlin.reflect.KClass
 
@@ -32,4 +33,5 @@ enum class DbCollection(
     Problem(ProblemModel::class),
     Quiz(QuizModel::class),
     Vote(VoteModel::class),
+    Error(ErrorModel::class),
   }

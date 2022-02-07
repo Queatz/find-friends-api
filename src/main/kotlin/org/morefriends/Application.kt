@@ -9,6 +9,7 @@ fun main() {
         configureHTTP()
         configureRouting()
         configureSerialization()
+        configureInterceptors()
         initialize()
     }.start(wait = true)
 }
