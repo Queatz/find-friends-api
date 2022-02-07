@@ -31,6 +31,8 @@ dependencies {
     implementation("com.arangodb:velocypack:2.5.4")
     implementation("com.arangodb:velocypack-module-jdk8:1.1.1")
     implementation("com.googlecode.libphonenumber:libphonenumber:8.12.42")
+    implementation("com.twilio.sdk:twilio:8.25.1")
+    implementation("com.sun.mail:javax.mail:1.6.2")
     testImplementation("io.ktor:ktor-server-tests:$ktorVersion")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlinVersion")
 }

@@ -1,6 +1,7 @@
 package org.morefriends.services
 
 import org.morefriends.isEmailAddress
+import org.morefriends.isPhoneNumber
 import java.util.logging.Logger
 
 class Messaging {
@@ -21,12 +22,12 @@ class Messaging {
 
                 when {
                     contact.isEmailAddress() -> sendEmail.send(contact, text)
-                    contact.isEmailAddress() -> sendSms.send(contact, text)
+                    contact.isPhoneNumber() -> sendSms.send(contact, text)
                     else -> {
-                        Logger.getGlobal().info("Failed to send. $contact = $text")
+                        Logger.getGlobal().info("Failed to send. $contact -x-> $text")
                     }
                 }
-                Logger.getGlobal().info("$contact = $text")
+                Logger.getGlobal().info("$contact -> $text")
             }
         }
     }

@@ -10,6 +10,7 @@ import org.morefriends.api.*
 import org.morefriends.db.Arango
 import org.morefriends.models.*
 import org.morefriends.services.Messaging
+import org.morefriends.services.Secrets
 import java.time.Instant
 import java.util.logging.Logger
 import kotlin.random.Random.Default.nextInt
@@ -20,6 +21,7 @@ data class Dated<T>(
 )
 
 val db = Arango()
+val secrets = Secrets()
 
 val codes = mutableMapOf<String, Dated<String>>()
 val tokens = mutableMapOf<String, Dated<String>>()
@@ -36,7 +38,7 @@ fun Application.configureRouting() {
                     when {
                         it.contact.isNotEmpty() -> {
                             val code = nextInt(100000, 999999).toString()
-                            val text = "Your morefriends.org code is: $code"
+                            val text = "Your MoreFriends.org code is: $code"
 
                             val quiz = db.quiz(it.contact.normalizeContact())
 

@@ -1,9 +1,21 @@
 package org.morefriends.services
 
-import java.util.logging.Logger
+import com.twilio.Twilio
+import com.twilio.rest.api.v2010.account.Message
+import com.twilio.type.PhoneNumber
+import org.morefriends.plugins.secrets
 
 class SendSms {
+
+    init {
+        Twilio.init(secrets.config.twilio.sid, secrets.config.twilio.token)
+    }
+
     fun send(phoneNumber: String, text: String) {
-        Logger.getGlobal().info("$phoneNumber = $text")
+        Message.creator(
+            PhoneNumber(phoneNumber),
+            PhoneNumber(secrets.config.twilio.phoneNumber),
+            text
+        ).create()
     }
 }
