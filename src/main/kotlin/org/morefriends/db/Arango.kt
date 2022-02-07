@@ -26,14 +26,14 @@ class Arango {
     private fun <T : Model> one(klass: KClass<T>, query: String, parameters: Map<String, Any> = mapOf()) =
         db.query(
             query,
-            mutableMapOf("@collection" to klass.dbCollection()) + parameters,
+            if (query.contains("@@collection")) mutableMapOf("@collection" to klass.dbCollection()) + parameters else parameters,
             klass.java
         ).stream().findFirst().takeIf { it.isPresent }?.get()
 
     private fun <T : Model> list(klass: KClass<T>, query: String, parameters: Map<String, Any> = mapOf()) =
         db.query(
             query,
-            mutableMapOf("@collection" to klass.dbCollection()) + parameters,
+            if (query.contains("@@collection")) mutableMapOf("@collection" to klass.dbCollection()) + parameters else parameters,
             klass.java
         ).asListRemaining().toList()
 
@@ -44,9 +44,9 @@ class Arango {
             klass.java
         ).asListRemaining().toList()
 
-    fun insert(model: Model) = db.collection(model::class.dbCollection()).insertDocument(model.apply { createdAt = Instant.now() }, DocumentCreateOptions().returnNew(true))!!.new
-    fun update(model: Model) = db.collection(model::class.dbCollection()).updateDocument(model.id?.asKey(), model, DocumentUpdateOptions().returnNew(true))!!.new
-    fun delete(model: Model) = db.collection(model::class.dbCollection()).deleteDocument(model.id?.asKey())
+    fun <T : Model>insert(model: T) = db.collection(model::class.dbCollection()).insertDocument(model.apply { createdAt = Instant.now() }, DocumentCreateOptions().returnNew(true))!!.new
+    fun <T : Model>update(model: T) = db.collection(model::class.dbCollection()).updateDocument(model.id?.asKey(), model, DocumentUpdateOptions().returnNew(true))!!.new
+    fun <T : Model>delete(model: T) = db.collection(model::class.dbCollection()).deleteDocument(model.id?.asKey())
 
     fun <T : Model> document(klass: KClass<T>, id: String) = try {
         db.collection(klass.dbCollection()).getDocument(id.asKey(), klass.java)
@@ -162,6 +162,25 @@ class Arango {
     )
     ).firstOrNull() ?: 0
 
+    fun unconfirmedQuizzesInGroup(group: String) = query(
+        AttendWithQuiz::class, """
+        for attend in ${DbCollection.Attend.dbCollection()}
+            filter attend.skip != true
+                and count(
+                    for confirm in ${DbCollection.Confirm.dbCollection()}
+                        filter confirm.attend == attend._id
+                            and confirm.response == true
+                        return confirm
+                ) == 0
+            return {
+                attend: attend,
+                quiz: document(attend.quiz)
+            }
+        """, mapOf(
+            "group" to group
+        )
+    )
+
     fun meets(group: String, attend: String) = query(
         MeetWithAttendance::class, """
             for meet in ${ DbCollection.Meet.dbCollection() }
@@ -184,6 +203,92 @@ class Arango {
         """, mapOf(
             "group" to group,
             "attend" to attend,
+        )
+    )
+
+    fun meets(group: String) = list(
+        Meet::class,
+        """
+            for meet in @@collection
+                filter meet.group == @group
+                return meet
+        """, mapOf(
+            "group" to group
+        )
+    )
+
+    fun quizzesConfirmedInMeet(meet: String) = list(
+        Quiz::class,
+        """
+            for confirm in ${Confirm::class.dbCollection()}
+                filter confirm.meet == @meet
+                return document(
+                    document(confirm.attend).quiz
+                )
+        """, mapOf(
+            "meet" to meet
+        )
+    )
+
+    fun meetAtPlace(group: String, place: String) = one(
+        Meet::class,
+        """
+            for meet in @@collection
+                filter meet.group == @group
+                    and meet.place == @place
+                return meet
+        """, mapOf(
+            "group" to group,
+            "place" to place
+        )
+    )
+
+    fun removeVotes(attend: String) = query(
+        Vote::class, """
+            for vote in @@collection
+                    filter vote.attend == @attend
+                remove vote in @@collection
+        """, mapOf(
+            "attend" to attend
+        )
+    )
+
+    fun removeConfirms(attend: String) = query(
+        Confirm::class, """
+            for confirm in @@collection
+                    filter confirm.attend == @attend
+                remove confirm in @@collection
+        """, mapOf(
+            "attend" to attend
+        )
+    )
+
+    fun meetsStartingBetween(after: Instant, atOrBefore: Instant) = query(
+        MeetWithAttendees::class,
+        """
+            for meet in ${DbCollection.Meet.dbCollection()}
+                for place in ${DbCollection.Place.dbCollection()}
+                        filter place._id == meet.place
+                            and place.date > @after
+                            and place.date <= @atOrBefore
+                    return {
+                        meet: meet,
+                        attendees: (
+                            for attend in ${DbCollection.Attend.dbCollection()}
+                                for confirm in ${DbCollection.Confirm.dbCollection()}
+                                        filter confirm.attend == attend._id
+                                            and confirm.meet == meet._id
+                                            and confirm.response == true
+                                    return {
+                                        attend: attend,
+                                        quiz: document(attend.quiz)
+                                    }
+                        )
+                    }
+        """,
+        mapOf(
+            "after" to after.toEpochMilli(),
+            "atOrBefore" to atOrBefore.toEpochMilli()
         )
     )
 }

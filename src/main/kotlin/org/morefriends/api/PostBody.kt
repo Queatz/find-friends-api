@@ -43,6 +43,7 @@ data class ConfirmPostBody (
 )
 
 data class MeetProblemPostBody (
+    val key: String,
     val problem: String
 )
 

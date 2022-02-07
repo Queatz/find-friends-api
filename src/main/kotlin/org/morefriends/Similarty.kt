@@ -22,7 +22,8 @@ fun formGroups(): List<List<Quiz>> {
                     it.quiz!!.hasPotential(quiz.quiz!!)
         }.toMutableSet()
 
-        // todo: need to match every person to ever other person as well
+        // future note: need to match every person to ever other person as well
+        // (right now everyone just matches to person A, but person B and C might not match)
 
         group
     }.filter { it.size >= 2 }.sortedByDescending { it.size }

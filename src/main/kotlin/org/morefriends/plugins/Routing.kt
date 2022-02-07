@@ -5,20 +5,14 @@ import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import org.morefriends.*
 import org.morefriends.api.*
 import org.morefriends.db.Arango
 import org.morefriends.models.*
-import org.morefriends.services.SendEmail
-import org.morefriends.services.SendSms
+import org.morefriends.services.Messaging
 import java.time.Instant
 import java.util.logging.Logger
 import kotlin.random.Random.Default.nextInt
-import kotlin.time.Duration.Companion.hours
-import kotlin.time.Duration.Companion.minutes
 
 data class Dated<T>(
     val value: T,
@@ -26,47 +20,13 @@ data class Dated<T>(
 )
 
 val db = Arango()
+
 val codes = mutableMapOf<String, Dated<String>>()
 val tokens = mutableMapOf<String, Dated<String>>()
 
-val sendEmail = SendEmail()
-val sendSms = SendSms()
+val messaging = Messaging()
 
-@OptIn(DelicateCoroutinesApi::class)
 fun Application.configureRouting() {
-    launch {
-        while (true) {
-            // todo: sweep tokens
-            // todo: sweep codes
-            // todo: schedule meets
-            delay(1.hours.inWholeMilliseconds)
-        }
-    }
-
-    launch {
-        // todo delay until Wednesday 10am CST
-//        delay(1.minutes.inWholeMilliseconds)
-
-        while (true) {
-            Logger.getGlobal().info("Forming groups for ${Instant.now()}")
-            formGroups().forEach {
-                Logger.getGlobal().info("Group of ${it.size} (${it.map { it.name }.joinToString(" + ")}) formed.")
-
-                it.forEach { quiz ->
-                    it.forEach { other ->
-                        if (quiz != other) {
-                            db.met(quiz.id!!, other.id!!)
-                        }
-                    }
-                }
-
-                createGroup(it)
-            }
-
-            delay(1.minutes.inWholeMilliseconds) // delay until Wednesday 10am CST
-        }
-    }
-
     routing {
         get("/") { call.respond(SuccessApiResponse()) }
 
@@ -82,13 +42,8 @@ fun Application.configureRouting() {
 
                             when {
                                 quiz == null -> HttpStatusCode.NotFound.description("A quiz for that contact was not found")
-                                it.contact.isPhoneNumber() -> {
-                                    sendSms.send(it.contact.normalizeContact(), text)
-                                    codes[it.contact.normalizeContact()] = Dated(code)
-                                    SuccessApiResponse()
-                                }
-                                it.contact.isEmailAddress() -> {
-                                    sendEmail.send(it.contact.normalizeContact(), text)
+                                it.contact.isContact() -> {
+                                    messaging.send(it.contact.normalizeContact(), text)
                                     codes[it.contact.normalizeContact()] = Dated(code)
                                     SuccessApiResponse()
                                 }
@@ -168,8 +123,7 @@ fun Application.configureRouting() {
                     when (existingQuiz) {
                         null -> HttpStatusCode.NotFound
                         else -> {
-                            // todo Remove all confirms, votes
-
+                            // optional: remove active confirms, votes
                             db.delete(existingQuiz)
 
                             SuccessApiResponse()
@@ -239,10 +193,13 @@ fun Application.configureRouting() {
                             db.vote(attend.id!!, attend.group!!, it.place)
 
                             attend.response().also { x ->
-                                // todo schedule meets after 30 minutes
-                                // todo schedule meets when 50% of unconfirmed people vote for 1 place
-                                x.places.firstOrNull { it.votes == x.attendees }?.let {
-                                    createMeet(it.place!!)
+                                // Send a message for the 1st meet
+                                if (db.meets(attend.group!!).isEmpty()) {
+                                    x.places.firstOrNull {
+                                        it.votes!! >= x.attendees!! / 2
+                                    }?.let {
+                                        createMeet(it.place!!)
+                                    }
                                 }
                             }
                         }
@@ -261,7 +218,13 @@ fun Application.configureRouting() {
                         else -> {
                             db.confirm(attend.id!!, it.meet, it.response)
 
-                            // todo, probably something happens here
+                            db.quizzesConfirmedInMeet(it.meet).filter {
+                                it.id != attend.quiz
+                            }.also { quizzes ->
+                                quizzes.forEach {
+                                    messaging.send(it.contact ?: return@forEach, "${quizzes.size - 1} ${if (quizzes.size - 1 == 1) "person" else "people"} have confirmed that they are attending your meet")
+                                }
+                            }
 
                             attend.response()
                         }
@@ -280,8 +243,8 @@ fun Application.configureRouting() {
                         attend.skip = true
                         db.update(attend)
 
-                        // todo: remove any confirms, votes
-                        // todo: alert any people going to the same meet that this person is not
+                        db.removeVotes(attend.id!!)
+                        db.removeConfirms(attend.id!!)
 
                         attend.response()
                     }
@@ -305,17 +268,20 @@ fun Application.configureRouting() {
             )
         }
 
-        post("/attend/{key}/problem") {
+        post("/meet/{id}/problem") {
             call.receive<MeetProblemPostBody>().also {
-                val attend = db.attend(key = call.parameters["key"]!!)
+                val meet = db.document(Meet::class, call.parameters["id"]!!)
+                val attend = db.attend(it.key)
 
                 call.respond(
                     when {
+                        meet == null -> HttpStatusCode.NotFound
                         attend == null -> HttpStatusCode.NotFound
+                        attend.group != meet.group -> HttpStatusCode.NotFound
                         it.problem.isBlank() -> HttpStatusCode.BadRequest.description("Missing problem")
                         else -> {
                             db.insert(Problem().apply {
-                                this.meet = attend.id
+                                this.meet = meet.id
                                 problem = it.problem
                             })
 
@@ -337,9 +303,12 @@ fun Application.configureRouting() {
                         attend == null -> HttpStatusCode.NotFound
                         attend.group != meet.group -> HttpStatusCode.NotFound
                         else -> {
-                            // todo: send message to people scheduled for my same meet location
-                            // todo: it.message
-                            Logger.getGlobal().info("Sending message: ${it.message}")
+                            db.quizzesConfirmedInMeet(meet.id!!).filter {
+                                it.id != attend.quiz
+                            }.forEach { quiz ->
+                                Logger.getGlobal().info("Sending message to ${quiz.name}: ${it.message}")
+                            }
+
                             SuccessApiResponse()
                         }
                     }
@@ -349,12 +318,14 @@ fun Application.configureRouting() {
 
         post("/meet/{id}/feedback") {
             call.receive<MeetFeedbackPostBody>().also {
-                // todo ensure meet key is supplied as well and matches the meet
                 val meet = db.document(Meet::class, call.parameters["id"]!!)
+                val attend = db.attend(it.key)
 
                 call.respond(
                     when {
                         meet == null -> HttpStatusCode.NotFound
+                        attend == null -> HttpStatusCode.NotFound
+                        attend.group != meet.group -> HttpStatusCode.NotFound
                         it.feedback.isBlank() -> HttpStatusCode.BadRequest.description("Missing feedback")
                         else -> {
                             db.insert(Feedback().apply {
@@ -403,3 +374,4 @@ private fun String.normalizeContact() = when {
     else -> trim()
 }
 
+fun Attend.link() = "https://morefriends.org/attend/$key"

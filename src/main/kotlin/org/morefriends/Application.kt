@@ -9,5 +9,6 @@ fun main() {
         configureHTTP()
         configureRouting()
         configureSerialization()
+        initialize()
     }.start(wait = true)
 }

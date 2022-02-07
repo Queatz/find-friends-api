@@ -1,9 +1,6 @@
 package org.morefriends.db
 
-import org.morefriends.models.Confirm
-import org.morefriends.models.Meet
-import org.morefriends.models.Place
-import org.morefriends.models.Quiz
+import org.morefriends.models.*
 
 class PlaceWithVotes {
     var place: Place? = null
@@ -21,4 +18,14 @@ class MeetWithAttendance {
     var place: Place? = null
     var attendees: Int? = null
     var confirm: Confirm? = null
+}
+
+class AttendWithQuiz {
+    var attend: Attend? = null
+    var quiz: Quiz? = null
+}
+
+class MeetWithAttendees {
+    var meet: Meet? = null
+    var attendees: List<AttendWithQuiz>? = null
 }
