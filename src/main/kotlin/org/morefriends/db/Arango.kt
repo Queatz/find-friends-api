@@ -166,6 +166,7 @@ class Arango {
         AttendWithQuiz::class, """
         for attend in ${DbCollection.Attend.dbCollection()}
             filter attend.skip != true
+                and attend.group == @group
                 and count(
                     for confirm in ${DbCollection.Confirm.dbCollection()}
                         filter confirm.attend == attend._id

@@ -43,6 +43,6 @@ fun createMeet(place: Place) {
 
     db.unconfirmedQuizzesInGroup(place.group!!).forEach {
         messaging.send(it.quiz!!.contact ?: return@forEach, "Dear ${it.quiz!!.name ?: "human"}, a meet has been scheduled for your group.")
-        messaging.send(it.quiz!!.contact ?: return@forEach, "Click the link below to confirm if you are attending.\n${it.attend!!.link()}")
+        messaging.send(it.quiz!!.contact ?: return@forEach, "Click the link below to respond.\n${it.attend!!.link()}")
     }
 }

@@ -224,7 +224,7 @@ fun Application.configureRouting() {
                                 it.id != attend.quiz
                             }.also { quizzes ->
                                 quizzes.forEach {
-                                    messaging.send(it.contact ?: return@forEach, "${quizzes.size - 1} ${if (quizzes.size - 1 == 1) "person" else "people"} have confirmed that they are attending your meet")
+                                    messaging.send(it.contact ?: return@forEach, "${quizzes.size} ${if (quizzes.size == 1) "person has" else "people have"} confirmed they are attending your meet")
                                 }
                             }
 
