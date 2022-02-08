@@ -4,9 +4,12 @@ import io.ktor.server.application.*
 import kotlinx.coroutines.*
 import org.morefriends.createGroup
 import org.morefriends.formGroups
-import java.time.Instant
+import java.time.*
 import java.time.temporal.ChronoUnit
+import java.time.temporal.TemporalAdjusters.next
+import java.time.temporal.TemporalAdjusters.nextOrSame
 import java.time.temporal.TemporalUnit
+import java.util.*
 import java.util.logging.Logger
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
@@ -37,8 +40,11 @@ fun Application.initialize() {
     }
 
     launch {
-        // optional: delay until Wednesday 10am CST
-        delayUntilNext(ChronoUnit.HOURS, 1)
+        delayUntil(ZonedDateTime.now(ZoneId.of("America/Chicago"))
+            .with(next(DayOfWeek.WEDNESDAY))
+            .truncatedTo(ChronoUnit.DAYS)
+            .withHour(10)
+            .toInstant())
 
         while (isActive) {
             Logger.getGlobal().info("Forming groups for ${Instant.now()}")
@@ -56,7 +62,11 @@ fun Application.initialize() {
                 createGroup(it)
             }
 
-            delay(1.minutes.inWholeMilliseconds) // delay until Wednesday 10am CST
+            delayUntil(ZonedDateTime.now(ZoneId.of("America/Chicago"))
+                .with(next(DayOfWeek.WEDNESDAY))
+                .truncatedTo(ChronoUnit.DAYS)
+                .withHour(10)
+                .toInstant())
         }
 
     }
@@ -91,6 +101,10 @@ fun Application.initialize() {
             delay(1.seconds.inWholeMilliseconds)
         }
     }
+}
+
+suspend fun delayUntil(instant: Instant) {
+    delay((instant.toEpochMilli() - Instant.now().toEpochMilli()).coerceAtLeast(0))
 }
 
 private suspend fun delayUntilNext(unit: TemporalUnit, count: Long) {
