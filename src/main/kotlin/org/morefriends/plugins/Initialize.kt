@@ -1,21 +1,22 @@
 package org.morefriends.plugins
 
 import io.ktor.server.application.*
-import kotlinx.coroutines.*
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import org.morefriends.createGroup
 import org.morefriends.formGroups
-import java.time.*
+import java.time.DayOfWeek
+import java.time.Instant
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters.next
-import java.time.temporal.TemporalAdjusters.nextOrSame
 import java.time.temporal.TemporalUnit
-import java.util.*
 import java.util.logging.Logger
 import kotlin.time.Duration.Companion.hours
-import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
-@OptIn(DelicateCoroutinesApi::class)
 fun Application.initialize() {
     launch {
         delayUntilNext(ChronoUnit.SECONDS, 1)
@@ -68,7 +69,6 @@ fun Application.initialize() {
                 .withHour(10)
                 .toInstant())
         }
-
     }
 
     launch {

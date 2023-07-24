@@ -44,9 +44,9 @@ class Arango {
             klass.java
         ).asListRemaining().toList()
 
-    fun <T : Model>insert(model: T) = db.collection(model::class.dbCollection()).insertDocument(model.apply { createdAt = Instant.now() }, DocumentCreateOptions().returnNew(true))!!.new
-    fun <T : Model>update(model: T) = db.collection(model::class.dbCollection()).updateDocument(model.id?.asKey(), model, DocumentUpdateOptions().returnNew(true))!!.new
-    fun <T : Model>delete(model: T) = db.collection(model::class.dbCollection()).deleteDocument(model.id?.asKey())
+    fun <T : Model>insert(model: T) = db.collection(model::class.dbCollection()).insertDocument(model.apply { createdAt = Instant.now() }, DocumentCreateOptions().returnNew(true))!!.new!!
+    fun <T : Model>update(model: T) = db.collection(model::class.dbCollection()).updateDocument(model.id?.asKey(), model, DocumentUpdateOptions().returnNew(true))!!.new!!
+    fun <T : Model>delete(model: T) = db.collection(model::class.dbCollection()).deleteDocument(model.id?.asKey())!!
 
     fun <T : Model> document(klass: KClass<T>, id: String) = try {
         db.collection(klass.dbCollection()).getDocument(id.asKey(), klass.java)

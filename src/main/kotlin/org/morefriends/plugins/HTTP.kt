@@ -17,6 +17,7 @@ fun Application.configureHTTP() {
         allowSameOrigin = true
         allowNonSimpleContentTypes = true
         host("morefriends.org", listOf("https"), listOf("www"))
+        host("www.morefriends.org", listOf("https"), listOf("www"))
         host("localhost:4200")
     }
 }

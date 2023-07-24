@@ -14,7 +14,6 @@ fun Application.configureSerialization() {
     install(ContentNegotiation) {
         gson {
             registerTypeAdapter(Instant::class.java, InstantTypeConverter())
-
         }
     }
 }
